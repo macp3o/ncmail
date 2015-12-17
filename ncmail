@@ -1,0 +1,63 @@
+#!/bin/bash
+#
+# Minimalistic drop in replacement for sendmail
+# w/out attachments or error recovery -- uses nc
+#
+# Usage: ncmail [-b SUBJECT] MAILTO
+# Input stream is the email body
+
+mailserver=`hostname -d`
+mailfrom="`whoami`@`hostname`"
+
+# get options and recipient address
+while getopts "s:" arg $*; do
+	case $arg in
+		"s") subject="$OPTARG" ;;
+	esac
+done
+OPTIND=$OPTIND-1
+shift $OPTIND
+
+mailto=$1
+
+# Usage instructions
+if [ -z "$1" -o "$1" = "-h" -o "$1" = "--help" ]; then
+	cat <<- END
+		Usage: `basename $0` [-s SUBJECT_LINE] MAIL_RECIPIENT < BODY
+		
+		Example 1: `basename $0` -s 'Example 1' someone@example.com < body.txt
+		Example 2: `basename $0` -s 'Example 2' someone@example.com <<< 'Hello world'
+		Example 3: `basename $0` -s 'Example 3' someone@example.com <<- EOF
+			Hello world
+			and everybody else!
+		EOF
+	END
+	exit 0
+fi
+
+# Replace the body line breaks by CR-LF
+body=`sed -e 's/\r?$/\r\n/' <&0`
+
+# We do not control for errors
+# AND we add a delay to make it acceptable by most servers
+function maildata() {
+	for line in	\
+		"ehlo `hostname`" 			\
+		"mail from: <$mailfrom>"		\
+		"rcpt to: <$mailto@$mailserver>"	\
+		"data" 					\
+		"From: $mailfrom"			\
+		"To: $mailto"				\
+		"Subject: $subject"			\
+		"" "$body" "." 				\
+		"QUIT";
+	do
+		echo $line
+		sleep 1
+	done
+}
+
+# Send the maildata, line by line, w/ a slight wait between lines
+maildata | nc $mailserver 25 2>&1
+exit $?
+
