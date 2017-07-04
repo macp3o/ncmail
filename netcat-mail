@@ -1,9 +1,9 @@
 #!/bin/bash
 #
 # Minimalistic drop in replacement for sendmail
-# w/out attachments or error recovery -- uses nc
+# w/out attachments or error recovery -- uses netcat
 #
-# Usage: ncmail [-b SUBJECT] MAILTO
+# Usage: netcat-mail [-b SUBJECT] MAILTO
 # Input stream is the email body
 
 mailserver=`hostname -d`
